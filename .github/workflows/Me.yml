@@ -24,12 +24,12 @@ jobs:
 
       - name: Run script and save output
         run: |
-          python py/Me.py > Me.txt
+          python py/Me.py > ip/Me.txt
 
       - name: Commit result
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add Me.txt
+          git add ip/Me.txt
           git commit -m "Auto update Me.txt [skip ci]" || echo "No changes to commit"
           git push
