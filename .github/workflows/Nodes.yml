@@ -1,10 +1,14 @@
 name: Nodes
 
 on:
-  push:              # 每次 push 时触发
+  push:
   schedule:
-   - cron: '0 */1 * * *' # 每3小时运行一次
-  workflow_dispatch:      # 允许手动触发
+    - cron: '0 */1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ip-update-group
+  cancel-in-progress: false
 
 jobs:
   run-script:
@@ -24,12 +28,13 @@ jobs:
 
       - name: Run script and save output
         run: |
-          python py/Nodes.py > Nodes.txt
+          python py/Nodes.py > ip/Nodes.txt
 
       - name: Commit result
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add Nodes.txt
+          git add ip/Nodes.txt
           git commit -m "Auto update Nodes.txt [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main || true
           git push
