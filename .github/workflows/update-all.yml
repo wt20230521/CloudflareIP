@@ -4,7 +4,7 @@ name: Update All
 on:
   push:
   schedule:
-    - cron: '0 0,12 * * *'  # 每天 00:00 和 12:00 运行
+    - cron: '0 0,12 * * *'  # 每12小时
   workflow_dispatch:
     inputs:
       target:
@@ -14,18 +14,17 @@ on:
         type: choice
         options:
           - ''
-          - All
-          - Cdtools
-          - Cfxyz
-          - DE
-          - Domain
-          - JP
-          - Me
-          - NL
-          - Nodes
-          - SG
-          - US
-          - Vless
+          - cf-jp
+          - cf-nl
+          - cf-sg
+          - cf-us
+          - cf-de
+          - cf-all
+          - web-me
+          - web-cdtools
+          - web-cfxyz
+          - domain
+          - vless
 
 jobs:
   update:
@@ -34,11 +33,44 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        target: [All, Cdtools, Cfxyz, DE, Domain, JP, Me, NL, Nodes, SG, US, Vless]
+        include:
+          - name: cf-jp
+            script: "python py/cf_tester.py jp"
+            file: "ip/JP.txt"
+          - name: cf-nl
+            script: "python py/cf_tester.py nl"
+            file: "ip/NL.txt"
+          - name: cf-sg
+            script: "python py/cf_tester.py sg"
+            file: "ip/SG.txt"
+          - name: cf-us
+            script: "python py/cf_tester.py us"
+            file: "ip/US.txt"
+          - name: cf-de
+            script: "python py/cf_tester.py de"
+            file: "ip/DE.txt"
+          - name: cf-all
+            script: "python py/cf_tester.py all"
+            file: "ip/IP.txt"
+          - name: web-me
+            script: "python py/web_scraper.py me"
+            file: "ip/Me.txt"
+          - name: web-cdtools
+            script: "python py/web_scraper.py cdtools"
+            file: "ip/Cdtools.txt"
+          - name: web-cfxyz
+            script: "python py/web_scraper.py cfxyz"
+            file: "ip/Cfxyz.txt"
+          - name: domain
+            script: "python py/domain_tester.py domain"
+            file: "ip/Domain.txt"
+          - name: vless
+            script: "python py/domain_tester.py vless"
+            file: "ip/Vless.txt"
     steps:
       - name: Skip if not selected
-        if: github.event.inputs.target != '' && github.event.inputs.target != matrix.target
-        run: echo "Skipped ${{ matrix.target }}" && exit 0
+        if: github.event.inputs.target != '' && github.event.inputs.target != matrix.name
+        run: echo "Skipped ${{ matrix.name }}" && exit 0
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -48,25 +80,24 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Cache pip dependencies
+      - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          restore-keys: ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: pip install -r requirements.txt || true
 
-      - name: Run script
-        run: python py/${{ matrix.target }}.py > ip/${{ matrix.target }}.txt
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.script }}
 
       - name: Commit result
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add ip/${{ matrix.target }}.txt
-          git commit -m "Auto update ${{ matrix.target }}.txt [skip ci]" || echo "No changes to commit"
+          git add ${{ matrix.file }}
+          git commit -m "Auto update ${{ matrix.name }} [skip ci]" || echo "No changes"
           git pull --rebase origin main || true
           git push
