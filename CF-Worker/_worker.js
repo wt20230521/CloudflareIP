@@ -1,16 +1,31 @@
-//推荐使用Pages上传部署（如需wokers部署或反复部署就删除默认节点代码），无需自定义域名而且稳定
-//默认UUID：04c808e2-0b59-47b0-a54b-32fc7ef1c902 建议部署时修改
-//默认反代IP：proxyip.cmliussss.net 无特殊要求无须修改
-//部署后用手搓CF节点生成器(https://sub.cndyw.ggff.net/)生成节点导入到v2ray或karing中使用
-//默认节点显示路径：https://部署域名/sub
+// 推荐使用 Pages 上传部署
+// 部署后用手搓 CF 节点生成器生成节点导入到 v2ray 或 karing 中使用
+// 默认节点显示路径：https://部署域名/sub
 
 import { connect } from 'cloudflare:sockets';
 
-let 我的VL密钥 = '04c808e2-0b59-47b0-a54b-32fc7ef1c902';//UUID
-let 反代IP = 'proxyip.cmliussss.net'; //反代IP
+// ============ 配置（已替换为实际值） ============
+let 我的VL密钥 = '2e16f730-f641-449a-9ca1-fa0cf3f16118'; // 你的 UUID
+let 反代IP = 'proxyip.cmliussss.net'; // 反代 IP
+
+// GitHub 仓库配置（用于动态获取优选 IP）
+const GITHUB_USER = 'wt20230521';
+const GITHUB_REPO = 'CloudflareIP';
+const GITHUB_BRANCH = 'main';
+const GITHUB_RAW = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/ip`;
+
+// 地区配置（对应你的 IP 文件）
+const REGION_CONFIG = {
+  'SG': { label: 'sg 新加坡 SG', count: 5 },
+  'JP': { label: 'jp 日本 JP', count: 5 },
+  'US': { label: 'us 美国 US', count: 5 },
+  'DE': { label: 'de 德国 DE', count: 5 },
+  'NL': { label: 'nl 荷兰 NL', count: 5 },
+  'IP': { label: 'CF 优选IP', count: 10 },  // All.py 生成的综合列表
+};
 
 export default {
-  async fetch(访问请求) {
+  async fetch(访问请求, env) {
     if (访问请求.headers.get('Upgrade') === 'websocket') {
       const 读取路径 = decodeURIComponent(访问请求.url.replace(/^https?:\/\/[^/]+/, ''));
       反代IP = 读取路径.match(/ip=([^&]+)/)?.[1] || 反代IP;
@@ -19,36 +34,100 @@ export default {
       启动传输管道(WS接口);
       return new Response(null, { status: 101, webSocket: 客户端 });
     } else {
-        const 请求URL = new URL(访问请求.url);
-        const 部署域名 = 请求URL.hostname;
-        const 请求路径 = 请求URL.pathname;
+      const 请求URL = new URL(访问请求.url);
+      const 部署域名 = 请求URL.hostname;
+      const 请求路径 = 请求URL.pathname;
 
-        // 定义节点信息显示路径
-        const 节点路径 = '/sub';
+      // 定义节点信息显示路径
+      const 节点路径 = '/sub';
 
-        if (请求路径 === 节点路径) {
-            return new Response(`部署成功！
+      if (请求路径 === 节点路径) {
+        // 动态获取最新优选 IP 并生成节点
+        const 节点列表 = await 生成节点列表(部署域名);
 
-   你的UUID: ${我的VL密钥}
-   你的部署域名：${部署域名}
-   你的反代ip：${反代IP}
+        return new Response(`部署成功！
 
-默认节点：
-vless://${我的VL密钥}@${部署域名}:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#${部署域名}
-vless://${我的VL密钥}@108.162.192.0:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#sg 新加坡 SG
-vless://${我的VL密钥}@108.162.198.0:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#jp 日本 JP
-vless://${我的VL密钥}@104.18.0.0:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#us 美国 US
-vless://${我的VL密钥}@104.26.0.0:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#de 德国 DE
-vless://${我的VL密钥}@188.114.96.0:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#nl 荷兰 NL
+你的 UUID: ${我的VL密钥}
+你的部署域名：${部署域名}
+你的反代 ip：${反代IP}
 
-更多节点使用手搓节点生成器： http://ip.cloudip.ggff.net`, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        } else {
-            // 其他路径返回404响应
-            return new Response('部署成功，使用你的路径查看节点信息！', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
-        }
+动态优选节点（每12小时自动更新）：
+${节点列表}
+
+更多节点使用手搓节点生成器： http://ip.cloudip.ggff.net`, { 
+          status: 200, 
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
+        });
+      } else {
+        return new Response('部署成功，访问 /sub 查看节点信息！', { 
+          status: 404, 
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
+        });
+      }
     }
   }
 };
+
+// ============ 动态获取优选 IP 并生成节点 ============
+
+async function 获取IP列表(地区) {
+  try {
+    const url = `${GITHUB_RAW}/${地区}.txt`;
+    const resp = await fetch(url, { 
+      method: 'GET',
+      headers: { 'User-Agent': 'Cloudflare-Worker' }
+    });
+
+    if (!resp.ok) {
+      console.log(`获取 ${地区}.txt 失败: ${resp.status}`);
+      return [];
+    }
+
+    const text = await resp.text();
+    // 解析每行，提取 IP 地址（格式：IP#标签）
+    const lines = text.trim()
+      .split('\n')
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => {
+        const ip = line.split('#')[0].trim();
+        // 验证 IP 格式
+        if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+          return ip;
+        }
+        return null;
+      })
+      .filter(ip => ip !== null);
+
+    return lines;
+  } catch (e) {
+    console.error(`获取 ${地区} IP 失败:`, e);
+    return [];
+  }
+}
+
+async function 生成节点列表(部署域名) {
+  const 节点数组 = [];
+
+  // 默认节点（部署域名本身）
+  节点数组.push(`vless://${我的VL密钥}@${部署域名}:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#${部署域名}`);
+
+  // 从 GitHub 获取各地区优选 IP
+  for (const [地区, 配置] of Object.entries(REGION_CONFIG)) {
+    const IP列表 = await 获取IP列表(地区);
+    const 取前N个 = IP列表.slice(0, 配置.count);
+
+    for (const ip of 取前N个) {
+      节点数组.push(
+        `vless://${我的VL密钥}@${ip}:443?encryption=none&security=tls&sni=${部署域名}&fp=random&type=ws&host=${部署域名}&path=pyip%3D${反代IP}#${配置.label}`
+      );
+    }
+  }
+
+  return 节点数组.join('\n');
+}
+
+// ============ 传输管道（原逻辑不变） ============
+
 async function 启动传输管道(WS接口, TCP接口) {
   let 识别地址类型, 访问地址, 地址长度, 首包数据 = false, 首包处理完成 = null, 传输数据, 读取数据, 传输队列 = Promise.resolve();
   try {
