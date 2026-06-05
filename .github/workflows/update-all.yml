@@ -1,0 +1,72 @@
+# .github/workflows/update-all.yml
+name: Update All
+
+on:
+  push:
+  schedule:
+    - cron: '0 0,12 * * *'  # 每天 00:00 和 12:00 运行
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '要更新的目标（留空=全部）'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - All
+          - Cdtools
+          - Cfxyz
+          - DE
+          - Domain
+          - JP
+          - Me
+          - NL
+          - Nodes
+          - SG
+          - US
+          - Vless
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        target: [All, Cdtools, Cfxyz, DE, Domain, JP, Me, NL, Nodes, SG, US, Vless]
+    steps:
+      - name: Skip if not selected
+        if: github.event.inputs.target != '' && github.event.inputs.target != matrix.target
+        run: echo "Skipped ${{ matrix.target }}" && exit 0
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt || true
+
+      - name: Run script
+        run: python py/${{ matrix.target }}.py > ip/${{ matrix.target }}.txt
+
+      - name: Commit result
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add ip/${{ matrix.target }}.txt
+          git commit -m "Auto update ${{ matrix.target }}.txt [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main || true
+          git push
