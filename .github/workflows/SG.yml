@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 获取完整历史，确保能正常 pull/push
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -26,10 +28,11 @@ jobs:
         run: |
           python py/SG.py > ip/SG.txt
 
-      - name: Commit result
+      - name: Commit and push result
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add ip/SG.txt
-          git commit -m "Auto update SG.txt [skip ci]" || echo "No changes to commit"
-          git push
+          git commit -m "Auto update SG.txt [skip ci]" || exit 0
+          git pull origin main --rebase || exit 1
+          git push origin main
