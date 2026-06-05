@@ -220,7 +220,7 @@ def main() -> int:
 
     # also write to xyz.txt
     try:
-        with open("xyz.txt", "w", encoding="utf-8") as f:
+        with open("ip/Cfxyz.txt", "w", encoding="utf-8") as f:
             for ip, speed in sorted_pairs:
                 f.write(f"{ip}#[测速 Nodes] {speed}".strip() + "\n")
     except Exception as exc:
