@@ -1,10 +1,14 @@
 name: Cdtools
 
 on:
-  push:              # 每次 push 时触发
+  push:
   schedule:
-   - cron: '0 */1 * * *' # 每3小时运行一次
-  workflow_dispatch:      # 允许手动触发
+    - cron: '0 */1 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ip-update-group
+  cancel-in-progress: false
 
 jobs:
   run-script:
@@ -32,4 +36,5 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add ip/Cdtools.txt
           git commit -m "Auto update Cdtools.txt [skip ci]" || echo "No changes to commit"
+          git pull --rebase origin main || true
           git push
