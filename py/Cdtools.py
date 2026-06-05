@@ -12,7 +12,7 @@ REGION_URLS = [
     "https://cf-ip.cdtools.click/shenzhen",
     "https://cf-ip.cdtools.click/chengdu",
 ]
-OUTPUT_FILE = "ip/Cdtools.txt"
+OUTPUT_FILE = "cdtools.txt"
 
 
 def fetch_html(url: str, timeout_seconds: int = 20) -> str:

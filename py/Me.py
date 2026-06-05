@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 
 URL = "https://api.uouin.com/cloudflare.html"
-OUTPUT_FILE = "ip/Me.txt"
+OUTPUT_FILE = "Me.txt"
 
 
 def normalize_speed_to_bps(speed_text: str) -> Optional[float]:
