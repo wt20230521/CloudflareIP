@@ -28,7 +28,7 @@ export default {
   async fetch(访问请求, env) {
     if (访问请求.headers.get('Upgrade') === 'websocket') {
       const 读取路径 = decodeURIComponent(访问请求.url.replace(/^https?:\/\/[^/]+/, ''));
-      反代IP = 读取路径.match(/(?:ip|pyip)=([^&]+)/)?.[1] || 反代IP;
+      反代IP = 读取路径.match(/ip=([^&]+)/)?.[1] || 反代IP;
       const [客户端, WS接口] = Object.values(new WebSocketPair());
       WS接口.accept();
       启动传输管道(WS接口);
@@ -171,19 +171,45 @@ async function 启动传输管道(WS接口, TCP接口) {
         default:
           throw new Error('无效的访问地址');
       }
-      try {
-        if (识别地址类型 === 3) {
-          const 转换IPV6地址 = `[${访问地址}]`
-          TCP接口 = connect({ hostname: 转换IPV6地址, port: 访问端口 });
-        } else {
-          TCP接口 = connect({ hostname: 访问地址, port: 访问端口 });
+      // 三级fallback：自定义反代IP → 默认反代域名 → 直连
+      let 连接成功 = false;
+
+      // 第一级：尝试自定义反代IP（从path参数传入的）
+      if (反代IP && 反代IP !== 'proxyip.cmliussss.net') {
+        try {
+          const [反代IP地址, 反代IP端口 = 443] = 反代IP.split(':');
+          TCP接口 = connect({ hostname: 反代IP地址, port: Number(反代IP端口) });
+          await TCP接口.opened;
+          连接成功 = true;
+        } catch {
+          console.log('自定义反代IP失效，尝试默认反代域名');
         }
-        await TCP接口.opened;
-      } catch {
-        if (!反代IP) throw new Error('直连失败且未配置反代IP');
-        const [反代IP地址, 反代IP端口 = 443] = 反代IP.split(':');
-        TCP接口 = connect({ hostname: 反代IP地址, port: Number(反代IP端口) });
-        await TCP接口.opened;
+      }
+
+      // 第二级：尝试默认反代域名 proxyip.cmliussss.net
+      if (!连接成功) {
+        try {
+          TCP接口 = connect({ hostname: 'proxyip.cmliussss.net', port: 443 });
+          await TCP接口.opened;
+          连接成功 = true;
+        } catch {
+          console.log('默认反代域名失效，尝试直连');
+        }
+      }
+
+      // 第三级：直连优选IP
+      if (!连接成功) {
+        try {
+          if (识别地址类型 === 3) {
+            const 转换IPV6地址 = `[${访问地址}]`
+            TCP接口 = connect({ hostname: 转换IPV6地址, port: 访问端口 });
+          } else {
+            TCP接口 = connect({ hostname: 访问地址, port: 访问端口 });
+          }
+          await TCP接口.opened;
+        } catch {
+          throw new Error('所有连接方式均失败：自定义反代IP、默认反代域名、直连均不可用');
+        }
       }
       传输数据 = TCP接口.writable.getWriter();
       读取数据 = TCP接口.readable.getReader();
