@@ -28,7 +28,7 @@ export default {
   async fetch(访问请求, env) {
     if (访问请求.headers.get('Upgrade') === 'websocket') {
       const 读取路径 = decodeURIComponent(访问请求.url.replace(/^https?:\/\/[^/]+/, ''));
-      反代IP = 读取路径.match(/ip=([^&]+)/)?.[1] || 反代IP;
+      反代IP = 读取路径.match(/(?:ip|pyip)=([^&]+)/)?.[1] || 反代IP;
       const [客户端, WS接口] = Object.values(new WebSocketPair());
       WS接口.accept();
       启动传输管道(WS接口);
