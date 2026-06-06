@@ -707,7 +707,8 @@ const defaultUUID = '2e16f730-f641-449a-9ca1-fa0cf3f16118';
                         return;
                     }
 
-                    const vlessTemplate = `vless://${uuid}@自定义1:443?encryption=none&security=tls&sni=${domain}&fp=random&insecure=0&allowInsecure=0&type=ws&host=${domain}&path=pyip%3D${custom3}#自定义2`;
+                    const pathValue = `pyip=${custom3}`;
+                    const vlessTemplate = `vless://${uuid}@自定义1:443?encryption=none&security=tls&sni=${domain}&fp=random&insecure=0&allowInsecure=0&type=ws&host=${domain}&path=${encodeURIComponent(pathValue)}#自定义2`;
 
                     const links = [];
 
